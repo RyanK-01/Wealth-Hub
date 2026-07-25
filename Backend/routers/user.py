@@ -24,12 +24,12 @@ class acc_details(BaseModel):
     pass
 
 #The URL the frontend should use to get a token
-load_dotenv()
+load_dotenv("Backend/.env")
 secret = os.getenv("SECRET_KEY")
 if not secret:
     raise ValueError("No SECRET_KEY set for FastAPI application. Check your .env file!")
 Algo = "HS256"
-Access_Token_Expire_Min = 30
+Access_Token_Expire_Min = 60
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 def create_access_token(data: dict):
@@ -37,7 +37,7 @@ def create_access_token(data: dict):
     
     #Calculate expiration time based on my variable
     expire = datetime.now(timezone.utc) + timedelta(minutes=Access_Token_Expire_Min)
-    to_encode.update({"expire": expire})
+    to_encode.update({"exp": expire})
     
     #Generate the cryptographic string
     encoded_jwt = jwt.encode(to_encode, secret, algorithm=Algo)
@@ -105,7 +105,7 @@ def login(data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     #Verify password
     if bcrypt.checkpw(login_sha256_bytes, matched_pw):
         access_token = create_access_token(data={"sub": matched_user["username"]})
-        return {"Status": "Success", "Access Token": access_token}
+        return {"access_token": access_token, "token_type": "bearer"}
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
