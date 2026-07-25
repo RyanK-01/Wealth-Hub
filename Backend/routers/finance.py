@@ -1,8 +1,10 @@
+from re import I
+
 from fastapi import APIRouter, Depends, status, HTTPException
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional, List, Literal
-from Backend.routers.user import get_curr_user, acc_list, account
+from pydantic import BaseModel, Field
+from datetime import date, datetime, timezone
+from typing import Optional, Literal
+from Backend.routers.user import get_curr_user
 
 #Auto adds "/finance" to all endpoints in this file
 routers = APIRouter(prefix="/finance", tags=["Finance"])
@@ -18,8 +20,9 @@ def ID_count(transaction_list):
 #Models
 class transaction(BaseModel):
     id: Optional [int]=None
+    username: Optional [str]=None
     type: Literal["Income", "Expense"]
-    date: datetime
+    date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     amount: float
     category: str
     payment: str
@@ -27,15 +30,13 @@ class transaction(BaseModel):
     
 @routers.post("/transaction")
 def create_transaction(trans: transaction, curr_user: dict = Depends(get_curr_user)):
-    for user in acc_list:
-        if user["username"] == curr_user["username"]:
-            username = curr_user["username"]
-            trans["id"] = ID_count(transaction_list)
-            transaction_list.append(trans)
-            return {"message": f"Successfully created new transaction for {username}"}
-    
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect autehntication credetials", 
-                        headers={"WWW-Authenticate": "Bearer"})
+    trans_dict = trans.dict()
+    username = curr_user["username"]
+    new_id = ID_count(transaction_list)
+    trans_dict["id"] = new_id
+    trans_dict["username"] = username
+    transaction_list.append(trans_dict)
+    return {"message": f"Successfully created new transaction (ID: {new_id}) for {username}"}
 
 @routers.get("/transaction/{id}")
 def retrieve_transaction(id: int, curr_user: dict = Depends(get_curr_user)):
@@ -54,13 +55,11 @@ def edit_transaction(id: int, trans_update: transaction, curr_user: dict = Depen
         if trans["id"] == id:
             if trans["username"] == curr_user["username"]:
                 update_data = trans_update.dict()
-                trans["id"] == update_data["id"]
-                trans["type"] == update_data["type"]
-                trans["date"] == update_data["date"]
-                trans["amount"] == update_data["amount"]
-                trans["category"] == update_data["category"]
-                trans["payment"] == update_data["payment"]
-                trans["description"] == update_data["description"]
+                trans["type"] = update_data["type"]
+                trans["amount"] = update_data["amount"]
+                trans["category"] = update_data["category"]
+                trans["payment"] = update_data["payment"]
+                trans["description"] = update_data["description"]
                 return {"message": "Transaction updated successfully", "transaction": trans}
             else:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorised to view this transaction")
