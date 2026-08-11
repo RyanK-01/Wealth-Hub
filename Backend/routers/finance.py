@@ -1,3 +1,4 @@
+from gc import disable
 from re import I
 
 from fastapi import APIRouter, Depends, status, HTTPException
@@ -10,7 +11,8 @@ from Backend.routers.user import get_curr_user
 routers = APIRouter(prefix="/finance", tags=["Finance"])
 
 transaction_list=[]
-#ID counter
+
+#ID counter (For mock data)
 def ID_count(transaction_list):
     if not transaction_list:
         return 1
@@ -76,4 +78,11 @@ def del_transaction(id: int, curr_user: dict = Depends(get_curr_user)):
             else:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorised to view this transaction")
     
-    raise HTTPException(status_code=status.HTTP_404_FORBIDDEN, detail="Transaction not found")
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+
+@routers.get("/transaction")
+def list_transation(curr_user: dict = Depends(get_curr_user,
+                    )):
+    
+        
+    pass
